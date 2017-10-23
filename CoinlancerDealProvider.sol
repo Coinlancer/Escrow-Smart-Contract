@@ -1,4 +1,4 @@
-pragma solidity ^0.4.2;
+pragma solidity ^0.4.11;
 contract owned
 {
     address public owner;
@@ -24,16 +24,20 @@ contract tokenRecipient { function receiveApproval(address _from, uint256 _value
 
 contract token
 {
+    /* Public variables of the token */
     string public name;
     string public symbol;
     uint8 public decimals;
     uint256 public totalSupply;
 
+    /* This creates an array with all balances */
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
 
-   event Transfer(address indexed from, address indexed to, uint256 value);
+    /* This generates a public event on the blockchain that will notify clients */
+    event Transfer(address indexed from, address indexed to, uint256 value);
 
+    /* Initializes contract with initial supply tokens to the creator of the contract */
     function token
     (
         uint256 initialSupply,
@@ -49,6 +53,7 @@ contract token
         decimals = decimalUnits;                            // Amount of decimals for display purposes
     }
 
+    /* Send coins */
     function transfer(address _to, uint256 _value)
     {
         if (balanceOf[msg.sender] < _value) throw;           // Check if the sender has enough
@@ -58,12 +63,14 @@ contract token
         Transfer(msg.sender, _to, _value);                   // Notify anyone listening that this transfer took place
     }
 
+    /* Allow another contract to spend some tokens in your behalf */
     function approve(address _spender, uint256 _value) returns (bool success)
     {
         allowance[msg.sender][_spender] = _value;
         return true;
     }
     
+    /* A contract attempts to get the coins */
     function transferFrom(address _from, address _to, uint256 _value) returns (bool success) {
         if (balanceOf[_from] < _value) throw;                 // Check if the sender has enough
         if (balanceOf[_to] + _value < balanceOf[_to]) throw;  // Check for overflows
@@ -85,13 +92,15 @@ contract token
 contract StandardToken is owned, token
 {
     
-   function StandardToken(
+    /* Initializes contract with initial supply tokens to the creator of the contract */
+    function StandardToken(
         uint256 initialSupply,
         string tokenName,
         uint8 decimalUnits,
         string tokenSymbol
     ) token (initialSupply, tokenName, decimalUnits, tokenSymbol) {}
    
+    /* Send coins */
     function transfer(address _to, uint256 _value)
     {
         if (balanceOf[msg.sender] < _value) throw;           // Check if the sender has enough
@@ -101,6 +110,7 @@ contract StandardToken is owned, token
         Transfer(msg.sender, _to, _value);                   // Notify anyone listening that this transfer took place
     }
     
+    /* A contract attempts to get the coins */
     function transferFrom(address _from, address _to, uint256 _value) returns (bool success) {
         if (balanceOf[_from] < _value) throw;                 // Check if the sender has enough
         if (balanceOf[_to] + _value < balanceOf[_to]) throw;  // Check for overflows
@@ -116,12 +126,21 @@ contract StandardToken is owned, token
 
 contract DealProvider
 {
-    StandardToken public token; //using interface of ERC20 token
+    StandardToken public token;
     
     address public feeAccount;
+    //= 0xdd870fa1b7c4700f2bd7f44238821c26f7392148;
     address public escrow;
-	
-	mapping (uint256 => address[2]) public addresses;
+    //= 0x14723a09acff6d2a60dcdf7aa4aff308fddc160c;
+
+    
+    /* 
+    address public client = 0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db;
+    address public executor = 0x583031d1113ad414f02576bd6afabfb302140225;
+    */
+    
+    //mapping (uint256 => uint256) public payed_amounts;
+    mapping (uint256 => address[2]) public addresses;
     mapping (uint256 => uint256) public comissions;
     mapping (uint256 => uint256) public step_payments;
     
@@ -172,10 +191,21 @@ contract DealProvider
         step_payments[id] = amount;
     }
     
+   /* function setPayedAmount(uint256 id, uint256 amount, uint256 fee) onlyOwner
+    {
+        payed_amounts[id] = amount;
+        comissions[id] = fee;
+    }*/
+    
     function setComission(uint256 id, uint256 fee) onlyOwner
     {
         comissions[id] = fee;
     }
+    
+    /*function withdrawFee(uint256 id) onlyOwner
+    {
+        token.transferFrom(this, feeAccount, comissions[id]);
+    }*/
     
     function stepTransferToEscrow(uint256 id) onlyOwner
     {
@@ -183,9 +213,12 @@ contract DealProvider
         token.transferFrom(addresses[id][0], feeAccount, comissions[id]); //withdraw fee
     }
     
-    function stepTransferToExecutor(uint256 id) onlyOwner
+    function stepTransferToExecutor(uint256[] ids) onlyOwner
     {
-        token.transfer(addresses[id][1], step_payments[id]);
+        for (uint256 i = 0; i < ids.length; i++)
+        {
+            token.transfer(addresses[ids[i]][1], step_payments[ids[i]]);
+        }
     }
     
     function refund(uint256 id) onlyOwner
