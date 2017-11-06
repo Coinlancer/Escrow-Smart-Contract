@@ -125,16 +125,19 @@ pragma solidity 0.4.13;
      }
 }
 
-contract DealProvider
+contract Escrow
 {
     Coinlancer public token;
     
     address public feeAccount;
+    address public founder;
     address public owner;
+    uint256 public fee;
+    
+    uint256 fee_mul = 3;
 
     mapping (uint256 => address[2]) public addresses;
-    mapping (uint256 => uint256) public comissions;
-    mapping (uint256 => uint256) public step_payments;
+    mapping (uint256 => uint256) public payments;
     
     modifier onlyOwner
     {
@@ -142,64 +145,53 @@ contract DealProvider
         _;
     }
     
-    function DealProvider(address token_address)
+    function Escrow(address token_address)
     {
         token = Coinlancer(token_address);
+        founder = msg.sender;
         owner = msg.sender;
     }
     
 
-    function transferOwnership(address newOwner) onlyOwner
+    function transferOwnership(address newOwner)
     {
+        if (msg.sender != founder) throw;
         owner = newOwner;
     }
     
-    function setFeeAccount(address new_feeAccount) onlyOwner
+    function setFeeAccount (address new_feeAccount) onlyOwner
     {
         feeAccount = new_feeAccount;
     }
     
-    function setAddresses(uint256 id, address client, address executor) onlyOwner
+    function setFee (uint256 fee) onlyOwner
     {
-        addresses[id][0] = client;
-        addresses[id][1] = executor;
+        fee_mul = fee;
     }
     
-    function setStepPayments(uint256 id, uint256 amount) onlyOwner
+    function deposit (uint256 step_id, address from, address to, uint256 amount) onlyOwner
     {
-        step_payments[id] = amount;
+        //uint256 fee;
+        addresses[step_id][0] = from;
+        addresses[step_id][1] = to;
+        payments[step_id] = amount;
+        fee = (amount * fee_mul) / 100;
+        token.transferFrom(addresses[step_id][0], this, payments[step_id]);    //transfer to escrow
+        token.transferFrom(addresses[step_id][0], feeAccount, fee); //withdraw fee
     }
     
-   
-    function setComission(uint256 id, uint256 fee) onlyOwner
+    function pay (uint256 step_id) onlyOwner
     {
-        comissions[id] = fee;
+        token.transfer(addresses[step_id][1], payments[step_id]);
+        delete payments[step_id];
+        delete addresses[step_id];
     }
     
-    
-    function stepTransferToEscrow(uint256 id) onlyOwner
+    function refund (uint256 step_id) onlyOwner
     {
-        token.transferFrom(addresses[id][0], this, step_payments[id]);    //transfer to escrow
-        token.transferFrom(addresses[id][0], feeAccount, comissions[id]); //withdraw fee
+        token.transfer(addresses[step_id][0], payments[step_id]);
+        delete payments[step_id];
+        delete addresses[step_id];
     }
     
-    function stepTransferToExecutor(uint256[] ids) onlyOwner
-    {
-        for (uint256 i = 0; i < ids.length; i++)
-        {
-            token.transfer(addresses[ids[i]][1], step_payments[ids[i]]);
-        }
-    }
-    
-    function refund(uint256 id) onlyOwner
-    {
-        token.transfer(addresses[id][0], step_payments[id]);
-    }
-    
-    function deleteDeal(uint256 id) onlyOwner
-    {
-        delete comissions[id];
-        delete step_payments[id];
-        delete addresses[id];
-    }
 }
