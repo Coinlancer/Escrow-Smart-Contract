@@ -175,6 +175,8 @@ contract Escrow
         //uint256 fee;
         uint256 fee = (amount * fee_mul) / 100;
         if (token.balanceOf(from) < amount + fee) throw;
+        if (feeAccount == 0x0) throw;
+        if (payments[step_id] != 0) throw;
         addresses[step_id][0] = from;
         addresses[step_id][1] = to;
         payments[step_id] = amount;
@@ -184,6 +186,7 @@ contract Escrow
     
     function pay (uint256 step_id) onlyOwner
     {
+        if (payments[step_id] == 0) throw;
         token.transfer(addresses[step_id][1], payments[step_id]);
         delete payments[step_id];
         delete addresses[step_id];
@@ -191,6 +194,7 @@ contract Escrow
     
     function refund (uint256 step_id) onlyOwner
     {
+        if (payments[step_id] == 0) throw;
         token.transfer(addresses[step_id][0], payments[step_id]);
         delete payments[step_id];
         delete addresses[step_id];
