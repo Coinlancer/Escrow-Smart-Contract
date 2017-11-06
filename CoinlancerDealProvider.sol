@@ -135,6 +135,7 @@ contract Escrow
     uint256 public fee;
     
     uint256 fee_mul = 3;
+    //uint256 fee_den = 100;
 
     mapping (uint256 => address[2]) public addresses;
     mapping (uint256 => uint256) public payments;
@@ -166,16 +167,18 @@ contract Escrow
     
     function setFee (uint256 fee) onlyOwner
     {
+        if (fee > 100) throw;
         fee_mul = fee;
     }
     
     function deposit (uint256 step_id, address from, address to, uint256 amount) onlyOwner
     {
         //uint256 fee;
+        fee = (amount * fee_mul) / 100;
+        if (token.balanceOf(from) < amount + fee)
         addresses[step_id][0] = from;
         addresses[step_id][1] = to;
         payments[step_id] = amount;
-        fee = (amount * fee_mul) / 100;
         token.transferFrom(addresses[step_id][0], this, payments[step_id]);    //transfer to escrow
         token.transferFrom(addresses[step_id][0], feeAccount, fee); //withdraw fee
     }
