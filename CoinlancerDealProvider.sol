@@ -132,7 +132,6 @@ contract Escrow
     address public feeAccount;
     address public founder;
     address public owner;
-    uint256 public fee;
     
     uint256 fee_mul = 3;
     //uint256 fee_den = 100;
@@ -174,8 +173,8 @@ contract Escrow
     function deposit (uint256 step_id, address from, address to, uint256 amount) onlyOwner
     {
         //uint256 fee;
-        fee = (amount * fee_mul) / 100;
-        if (token.balanceOf(from) < amount + fee)
+        uint256 fee = (amount * fee_mul) / 100;
+        if (token.balanceOf(from) < amount + fee) throw;
         addresses[step_id][0] = from;
         addresses[step_id][1] = to;
         payments[step_id] = amount;
